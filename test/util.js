@@ -4,7 +4,6 @@ const fs = require("fs");
 const http = require("http");
 const https = require("https");
 const enableDestroy = require("server-destroy");
-const request = require("request");
 const { JSDOM } = require("..");
 const { Canvas } = require("../lib/jsdom/utils");
 
@@ -82,38 +81,6 @@ exports.injectIFrameWithScript = (document, scriptStr) => {
 };
 
 /**
- * Create a new Promise and call the given function with a resolver function which can be passed as a node
- * style callback.
- *
- * Node style callbacks expect their first argument to be an Error object or null. The returned promise will
- * be rejected if this first argument is set. Otherwise the promise will be resolved with the second argument of
- * the callback, or with an array of arguments if there are more arguments.
- *
- * @example nodeResolverPromise(nodeResolver => fs.readFile('foo.png', nodeResolver)).then(content => {});
- * @param {Function} fn
- * @returns {Promise}
- */
-exports.nodeResolverPromise = fn => {
-  return new Promise((resolve, reject) => {
-    fn(function (error, result) {
-      if (error) {
-        reject(error);
-      } else if (arguments.length > 2) {
-        // pass all the arguments as an array,
-        // skipping the error param
-        const arrayResult = new Array(arguments.length - 1);
-        for (let i = 1; i < arguments.length; ++i) {
-          arrayResult[i - 1] = arguments[i];
-        }
-        resolve(arrayResult);
-      } else {
-        resolve(result);
-      }
-    });
-  });
-};
-
-/**
  * Is this script currently running within a Web Worker context?
  * @returns {boolean}
  */
@@ -139,7 +106,7 @@ exports.inBrowserContext = () => {
  * @param {string} relativePath Relative path within the test directory. For example "jsdom/files/test.html"
  * @returns {string} URL
  */
-exports.getTestFixtureUrl = relativePath => {
+function getTestFixtureUrl(relativePath) {
   /* globals location */
   if (exports.inBrowserContext()) {
     // location is a Location or WorkerLocation
@@ -147,7 +114,7 @@ exports.getTestFixtureUrl = relativePath => {
   }
 
   return toFileUrl(__dirname, relativePath);
-};
+}
 
 /**
  * Reads a static fixture file as utf8.
@@ -155,19 +122,26 @@ exports.getTestFixtureUrl = relativePath => {
  * If running tests using karma, a http request will be performed to retrieve the file using karma's server.
  * @param {string} relativePath Relative path within the test directory. For example "jsdom/files/test.html"
  */
-exports.readTestFixture = relativePath => {
-  const useRequest = exports.inBrowserContext();
+exports.readTestFixture = async relativePath => {
+  if (exports.inBrowserContext()) {
+    const abortController = new self.AbortController();
+    const { signal } = abortController;
+    const timeout = setTimeout(() => {
+      abortController.abort();
+    }, 5000);
 
-  return exports.nodeResolverPromise(nodeResolver => {
-    if (useRequest) {
-      request.get(exports.getTestFixtureUrl(relativePath), { timeout: 5000 }, nodeResolver);
-    } else {
-      fs.readFile(path.resolve(__dirname, relativePath), { encoding: "utf8" }, nodeResolver);
+    try {
+      const response = await self.fetch(getTestFixtureUrl(relativePath), { method: "GET", signal });
+      if (!response.ok) {
+        throw new Error(`Unexpected status ${response.status} fetching ${response.location}`);
+      }
+      return response.text();
+    } finally {
+      clearTimeout(timeout);
     }
-  })
-  // request passes (error, response, content) to the callback
-  // we are only interested in the `content`
-    .then(result => useRequest ? result[1] : result);
+  }
+
+  return fs.promises.readFile(path.resolve(__dirname, relativePath), { encoding: "utf8" });
 };
 
 exports.isCanvasInstalled = (t, done) => {
@@ -180,7 +154,9 @@ exports.isCanvasInstalled = (t, done) => {
   return true;
 };
 
-exports.delay = ms => new Promise(r => setTimeout(r, ms));
+exports.delay = ms => new Promise(r => {
+  setTimeout(r, ms);
+});
 
 exports.createServer = handler => {
   return new Promise(resolve => {

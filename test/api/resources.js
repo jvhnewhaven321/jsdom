@@ -76,7 +76,8 @@ describe("API: resource loading configuration", { skipIfBrowser: true }, () => {
       // This may not be the optimal behavior for "not loading" iframes: it's fine to change this test in the future
       // if we have better semantics. (E.g., perhaps we should treat all URLs as about:blank.)
       assert.strictEqual(
-        dom.window.frames[0].document.documentElement, null,
+        dom.window.frames[0].document.documentElement,
+        null,
         "The iframe must not have been downloaded"
       );
     });
@@ -98,7 +99,8 @@ describe("API: resource loading configuration", { skipIfBrowser: true }, () => {
       // This may not be the optimal behavior for "not loading" iframes: it's fine to change this test in the future
       // if we have better semantics. (E.g., perhaps we should treat all URLs as about:blank.)
       assert.strictEqual(
-        dom.window.frames[0].document.documentElement, null,
+        dom.window.frames[0].document.documentElement,
+        null,
         "The iframe must not have been downloaded"
       );
     });
@@ -213,7 +215,8 @@ describe("API: resource loading configuration", { skipIfBrowser: true }, () => {
 
       await assertLoaded(element);
       assert.strictEqual(
-        dom.window.frames[0].document.body.textContent, "Hello",
+        dom.window.frames[0].document.body.textContent,
+        "Hello",
         "The iframe must have been downloaded"
       );
     });
@@ -229,7 +232,8 @@ describe("API: resource loading configuration", { skipIfBrowser: true }, () => {
 
       await assertLoaded(element);
       assert.strictEqual(
-        dom.window.frames[0].document.body.textContent, "Hello",
+        dom.window.frames[0].document.body.textContent,
+        "Hello",
         "The frame must have been downloaded"
       );
     });
@@ -302,7 +306,7 @@ describe("API: resource loading configuration", { skipIfBrowser: true }, () => {
         return assertError(element);
       });
 
-      it("should fire an load event downloading via XHR", { slow: 500 }, async () => {
+      it("should fire a load event downloading via XHR", { slow: 500 }, async () => {
         const url = await resourceServer404();
         const virtualConsole = ignoreResourceLoadingErrorsVC();
         const { window } = new JSDOM(``, { resources: "usable", virtualConsole, url });
@@ -618,7 +622,8 @@ describe("API: resource loading configuration", { skipIfBrowser: true }, () => {
 
       await assertLoaded(element);
       assert.strictEqual(
-        dom.window.frames[0].document.body.textContent, "Hello",
+        dom.window.frames[0].document.body.textContent,
+        "Hello",
         "The frame must have been downloaded"
       );
       assert.isTrue(resourceLoader.called, "The custom resource should be called");
@@ -829,8 +834,7 @@ function resourceServer503() {
 }
 
 async function neverRequestedServer() {
-  let resolveReturnedPromise;
-  let rejectReturnedPromise;
+  let resolveReturnedPromise, rejectReturnedPromise;
   const returnedPromise = new Promise((resolve, reject) => {
     resolveReturnedPromise = resolve;
     rejectReturnedPromise = reject;
